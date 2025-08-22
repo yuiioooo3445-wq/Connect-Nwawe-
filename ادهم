@@ -1,0 +1,296 @@
+<!doctype html>
+
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <title>أدهم ويوسف — لعبة رعب غامرة (مُحدثة)</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#020003;color:#fff;font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;-webkit-font-smoothing:antialiased}
+    .wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px;height:100%}
+    .game-area{width:100%;max-width:1100px;flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+    canvas{display:block;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.8);background:#000}.hud{width:100%;max-width:1100px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hud .left,.hud .right{font-size:14px;opacity:0.95}
+
+.title{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:6;text-align:center;pointer-events:none}
+.title h1{font-size:18px;margin-bottom:4px;letter-spacing:1px;color:#ffefef;text-shadow:0 6px 24px rgba(255,0,0,0.12)}
+
+/* Start screen */
+.start-screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.75));z-index:20;padding:20px}
+.start-card{max-width:760px;background:rgba(6,6,6,0.9);padding:20px;border-radius:12px;text-align:center}
+.start-card h2{margin-bottom:8px}
+.start-card p{opacity:0.85;margin-bottom:12px}
+.start-card .start-btn{display:inline-block;padding:12px 18px;border-radius:10px;background:#7b0202;color:#fff;font-weight:700}
+
+.overlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9;padding:18px 22px;background:rgba(0,0,0,0.6);border-radius:12px;text-align:center}
+
+.controls{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:12px;z-index:10}
+.btn{width:64px;height:64px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.08));display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;touch-action:none}
+.btn:active{transform:scale(0.98)}
+
+.hint{font-size:12px;opacity:0.75;text-align:center}
+
+/* Jump-scare overlay */
+.jumpscare{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:50}
+.jumpscare img{max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.9)}
+
+@media (max-width:600px){ .btn{width:56px;height:56px;font-size:18px} .title h1{font-size:16px} .start-card{padding:14px} }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <div class="left">♥ حياة: <span id="lives">3</span></div>
+      <div style="text-align:center"><strong>أدهم & يوسف — رعب غامِر</strong><div style="font-size:12px;opacity:0.7">غوص داخل الظلال — احفظ الكرة وكسر الطوب</div></div>
+      <div class="right">نقاط: <span id="score">0</span></div>
+    </div><div class="game-area">
+  <div class="title"><h1>أدهم ويوسف — لعبة رعب غامِرة</h1></div>
+  <canvas id="game"></canvas>
+
+  <div class="overlay" id="overlay" style="display:none">اضغط للمتابعة</div>
+
+  <div class="controls">
+    <div class="btn" id="leftBtn">◀</div>
+    <div class="btn" id="playBtn">▶</div>
+    <div class="btn" id="rightBtn">▶</div>
+  </div>
+
+  <!-- Start screen with short story -->
+  <div class="start-screen" id="startScreen">
+    <div class="start-card">
+      <h2>أدهم ويوسف — قصة البداية</h2>
+      <p>في بيتٍ مهجور على أطراف المدينة، اختفى الضحك وتحول الصوت إلى همسات... أدهم ويوسف دخلا يبحثان عن ضوءٍ بعيد، لكن الكرة هي كل ما تبقّى لهما. احفظها، فالظلام يتغذى على السقوط.</p>
+      <div style="margin-top:10px"><button class="start-btn" id="startBtn">ابدأ اللعبة</button></div>
+      <p style="margin-top:10px;font-size:12px;opacity:0.8">تلميح: اضغط على ابدأ ثم المس الشاشة لتشغيل الأصوات إذا أردت تجربة أكثر رعبًا.</p>
+    </div>
+  </div>
+
+  <!-- Jump-scare overlay (hidden until triggered) -->
+  <div class="jumpscare" id="jumpscare">
+    <!-- Placeholder image: استبدل src بصورة مرعبة تريدها -->
+    <img id="jumpscareImg" src="" alt="jumpscare">
+  </div>
+</div>
+
+<div style="font-size:12px;opacity:0.7;margin-top:6px">نصيحة: تفعيل الصوت يعطي تجربة أكثر رعبًا (اهتزاز على المحمول متاح).</div>
+
+  </div>  <!-- Audio elements (ضع مسارات الملفات هنا أو اتركها فارغة لاختبار بدون صوت) --><audio id="ambient" loop src=""></audio> <audio id="hitSnd" src=""></audio> <audio id="deathSnd" src=""></audio> <audio id="screamSnd" src=""></audio>
+
+  <script>
+    // --- DOM ---
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const startScreen = document.getElementById('startScreen');
+    const startBtn = document.getElementById('startBtn');
+    const jumpscare = document.getElementById('jumpscare');
+    const jumpscareImg = document.getElementById('jumpscareImg');
+
+    const overlay = document.getElementById('overlay');
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    const playBtn = document.getElementById('playBtn');
+    const livesEl = document.getElementById('lives');
+    const scoreEl = document.getElementById('score');
+
+    // audio elements
+    const ambient = document.getElementById('ambient');
+    const hitSnd = document.getElementById('hitSnd');
+    const deathSnd = document.getElementById('deathSnd');
+    const screamSnd = document.getElementById('screamSnd');
+
+    // NOTE: Browsers may block autoplay of audio until a user gesture occurs. We start audio after the player presses the Start button.
+
+    function resizeCanvas(){
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.min(window.innerWidth - 24, 1100);
+      const height = Math.max(420, Math.round(window.innerHeight * 0.70));
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      game.resize && game.resize(width, height);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- Game state ---
+    const game = { width:800, height:600, paddle:null, ball:null, bricks:[], rows:5, cols:8, score:0, lives:3, running:false, lastTime:0, shake:0 };
+
+    function initState(){
+      game.width = parseInt(canvas.style.width) || 800;
+      game.height = parseInt(canvas.style.height) || 600;
+
+      game.paddle = { w: Math.max(64, game.width*0.18), h: Math.max(12, game.height*0.03), x:(game.width/2)- (Math.max(64, game.width*0.18)/2), y: game.height - 64, speed: Math.max(6, game.width*0.024) };
+      resetBallToPaddle();
+
+      // create bricks, mark one special brick as JUMPSCARE
+      game.bricks = [];
+      const pad = 8;
+      const areaW = game.width * 0.92;
+      const bw = (areaW - (pad*(game.cols-1))) / game.cols;
+      const bh = Math.max(18, game.height*0.06);
+      const ox = (game.width-areaW)/2;
+      const oy = 72;
+      for(let r=0;r<game.rows;r++){
+        for(let c=0;c<game.cols;c++){
+          const isSpecial = (r===0 && c===Math.floor(game.cols/2)); // top middle brick is special
+          const brick = { x: ox + c*(bw+pad), y: oy + r*(bh+pad), w: bw, h: bh, hp: (r===0?2:1), special: isSpecial };
+          game.bricks.push(brick);
+        }
+      }
+
+      game.score = 0; game.lives = 3; livesEl.textContent = game.lives; scoreEl.textContent = game.score;
+      overlay.style.display = 'none';
+      game.running = false;
+    }
+
+    function resetBallToPaddle(){
+      game.ball = { r: Math.max(9, Math.round(game.width*0.018)), x: game.paddle?game.paddle.x + game.paddle.w/2: game.width/2, y: game.paddle?game.paddle.y - 12: game.height-80, vx:0, vy:0, speed: Math.max(4, game.width*0.006), stuck:true };
+    }
+
+    game.resize = function(w,h){ game.width = w; game.height = h; if(game.paddle){ game.paddle.w = Math.max(64, game.width*0.18); game.paddle.h = Math.max(12, game.height*0.03); game.paddle.y = game.height - 64; game.paddle.x = Math.min(game.paddle.x, game.width - game.paddle.w); resetBallToPaddle(); }}
+
+    function launchBall(){ if(!game.ball || !game.ball.stuck) return; const angle = (Math.random()*Math.PI/3)+(Math.PI/6); const dir = Math.random()<0.5?-1:1; game.ball.vx = Math.cos(angle)*game.ball.speed*dir; game.ball.vy = -Math.sin(angle)*game.ball.speed; game.ball.stuck=false; overlay.style.display='none'; game.running=true; }
+
+    // --- Jump-scare logic ---
+    let jumpscareActive = false;
+    function triggerJumpscare(){ if(jumpscareActive) return; jumpscareActive = true;
+      // show jumpscare overlay image and play sound
+      if(screamSnd && screamSnd.play){ try{ screamSnd.currentTime=0; screamSnd.play(); }catch(e){} }
+      if(jumpscareImg && jumpscareImg.src){ jumpscare.style.display='flex'; }
+      // vibrate and flash
+      if(navigator.vibrate) navigator.vibrate([100,50,100]);
+      // dark pause then hide and continue
+      setTimeout(()=>{ jumpscare.style.display='none'; jumpscareActive=false; }, 1200);
+    }
+
+    // --- Collision ---
+    function collideRectCircle(rect, circle){ const cx = Math.max(rect.x, Math.min(circle.x, rect.x+rect.w)); const cy = Math.max(rect.y, Math.min(circle.y, rect.y+rect.h)); const dx = circle.x - cx; const dy = circle.y - cy; return (dx*dx + dy*dy) <= (circle.r*circle.r); }
+
+    function update(dt){ if(!game.running) return;
+      if(!game.ball.stuck){ game.ball.x += game.ball.vx * dt; game.ball.y += game.ball.vy * dt; } else { game.ball.x = game.paddle.x + game.paddle.w/2; game.ball.y = game.paddle.y - 12; }
+
+      // walls
+      if(game.ball.x - game.ball.r <= 0){ game.ball.x = game.ball.r; game.ball.vx *= -1; playHit(); }
+      if(game.ball.x + game.ball.r >= game.width){ game.ball.x = game.width - game.ball.r; game.ball.vx *= -1; playHit(); }
+      if(game.ball.y - game.ball.r <= 0){ game.ball.y = game.ball.r; game.ball.vy *= -1; playHit(); }
+
+      // paddle
+      if(collideRectCircle(game.paddle, game.ball)){
+        const rel = (game.ball.x - (game.paddle.x + game.paddle.w/2)) / (game.paddle.w/2);
+        const bounce = rel * (Math.PI/3);
+        const speed = Math.hypot(game.ball.vx, game.ball.vy) * 1.03;
+        game.ball.vx = Math.sin(bounce) * speed;
+        game.ball.vy = -Math.cos(bounce) * speed;
+        game.ball.y = game.paddle.y - game.ball.r - 0.1;
+        triggerShake(6);
+        playHit();
+      }
+
+      // bricks
+      for(let i=0;i<game.bricks.length;i++){
+        const b = game.bricks[i];
+        if(collideRectCircle(b, game.ball)){
+          b.hp -= 1;
+          if(b.hp <= 0){
+            // if brick is special -> trigger jumpscare
+            if(b.special){ triggerJumpscare(); }
+            game.bricks.splice(i,1);
+          }
+          game.score += 10; scoreEl.textContent = game.score;
+          const overlapX = (game.ball.x >= b.x && game.ball.x <= b.x + b.w);
+          if(overlapX) game.ball.vy *= -1; else game.ball.vx *= -1;
+          triggerShake(8);
+          playHit();
+          if(navigator.vibrate) navigator.vibrate(30);
+          break;
+        }
+      }
+
+      // fell
+      if(game.ball.y - game.ball.r > game.height + 30){ game.lives -=1; livesEl.textContent = game.lives; playDeath(); if(game.lives<=0){ overlay.style.display='block'; overlay.innerHTML='انتهت اللعبة — اضغط لإعادة اللعب'; game.running=false; initState(); } else { resetBallToPaddle(); overlay.style.display='block'; overlay.innerHTML='اضغط لإطلاق الكرة — بقي ' + game.lives + ' حياة'; game.running=false; } }
+
+      // win
+      if(game.bricks.length===0){ overlay.style.display='block'; overlay.innerHTML='فزت! اضغط لإعادة'; game.running=false; initState(); }
+
+      // shake decay
+      game.shake *= 0.92;
+    }
+
+    // --- Rendering ---
+    function draw(){ ctx.save(); if(game.shake>0){ const sx=(Math.random()-0.5)*game.shake; const sy=(Math.random()-0.5)*game.shake; ctx.translate(sx,sy); }
+      ctx.clearRect(0,0,game.width,game.height);
+      const g = ctx.createLinearGradient(0,0,0,game.height); g.addColorStop(0,'#030206'); g.addColorStop(1,'#000000'); ctx.fillStyle=g; ctx.fillRect(0,0,game.width,game.height);
+
+      // moving fog
+      for(let i=0;i<3;i++){ ctx.globalAlpha=0.06; ctx.beginPath(); ctx.ellipse((Date.now()/200)%game.width + (i*game.width/3), 80 + i*30, game.width*0.6, game.height*0.28, 0,0,Math.PI*2); ctx.fillStyle=['#1b0a0a','#0a0a11','#140707'][i]; ctx.fill(); }
+      ctx.globalAlpha=1;
+
+      // bricks
+      for(const b of game.bricks){ const shade=b.special? '#6b0505' : (b.hp===2? '#5b0d0d':'#341213'); ctx.fillStyle=shade; ctx.fillRect(b.x,b.y,b.w,b.h); ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.strokeRect(b.x,b.y,b.w,b.h); }
+
+      // paddle
+      ctx.fillStyle='#d7d7d7'; roundRect(ctx, game.paddle.x, game.paddle.y, game.paddle.w, game.paddle.h, 8); ctx.fill();
+
+      // ball
+      ctx.beginPath(); ctx.fillStyle='#ffffff'; ctx.arc(game.ball.x, game.ball.y, game.ball.r, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.globalAlpha=0.08; ctx.arc(game.ball.x, game.ball.y, game.ball.r*3, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+
+      ctx.restore(); }
+
+    function roundRect(ctx,x,y,w,h,r){ const rad=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+rad,y); ctx.arcTo(x+w,y,x+w,y+h,rad); ctx.arcTo(x+w,y+h,x,y+h,rad); ctx.arcTo(x,y+h,x,y,rad); ctx.arcTo(x,y,x+w,y,rad); ctx.closePath(); }
+
+    function triggerShake(v){ game.shake = Math.max(game.shake, v); }
+
+    function playHit(){ if(hitSnd && hitSnd.play) try{ hitSnd.currentTime=0; hitSnd.play(); }catch(e){} }
+    function playDeath(){ if(deathSnd && deathSnd.play) try{ deathSnd.currentTime=0; deathSnd.play(); }catch(e){} if(navigator.vibrate) navigator.vibrate([60,30,60]); }
+
+    // --- Loop ---
+    function loop(t){ if(!game.lastTime) game.lastTime = t; const dt = Math.min(1/30, (t-game.lastTime)/16.67); game.lastTime = t; update(dt); draw(); requestAnimationFrame(loop); }
+
+    // --- Input ---
+    let touching=false;
+    canvas.addEventListener('pointerdown', (e)=>{ touching=true; if(overlay.style.display!=='none'){ if(!game.running) launchBall(); } });
+    window.addEventListener('pointermove', (e)=>{ if(!touching) return; const rect = canvas.getBoundingClientRect(); const x = Math.max(0, Math.min(e.clientX - rect.left, game.width)); game.paddle.x = x - game.paddle.w/2; game.paddle.x = Math.max(0, Math.min(game.paddle.x, game.width - game.paddle.w)); if(game.ball.stuck) game.ball.x = game.paddle.x + game.paddle.w/2; });
+    window.addEventListener('pointerup', ()=>{ touching=false; });
+
+    let moveDir=0, btnInterval=null;
+    leftBtn.addEventListener('pointerdown', ()=>{ moveDir=-1; movePaddle(); btnInterval=setInterval(movePaddle,16); });
+    rightBtn.addEventListener('pointerdown', ()=>{ moveDir=1; movePaddle(); btnInterval=setInterval(movePaddle,16); });
+    [leftBtn,rightBtn].forEach(b=>b.addEventListener('pointerup', ()=>{ moveDir=0; clearInterval(btnInterval); }));
+    [leftBtn,rightBtn].forEach(b=>b.addEventListener('pointerleave', ()=>{ moveDir=0; clearInterval(btnInterval); }));
+    function movePaddle(){ if(moveDir===0) return; game.paddle.x += moveDir * game.paddle.speed; game.paddle.x = Math.max(0, Math.min(game.paddle.x, game.width - game.paddle.w)); if(game.ball.stuck) game.ball.x = game.paddle.x + game.paddle.w/2; }
+
+    playBtn.addEventListener('click', ()=>{ if(game.ball.stuck) launchBall(); });
+    overlay.addEventListener('click', ()=>{ if(!game.running){ overlay.style.display='none'; if(game.bricks.length===0) initState(); launchBall(); } });
+    window.addEventListener('keydown', (e)=>{ if(e.key==='ArrowLeft') game.paddle.x -= game.paddle.speed; if(e.key==='ArrowRight') game.paddle.x += game.paddle.speed; if(e.key===' '||e.key==='Enter') launchBall(); });
+
+    // --- Start button behavior: enables audio and starts game ---
+    startBtn.addEventListener('click', ()=>{
+      // Try to play ambient music after user gesture
+      try{ if(ambient && ambient.play){ ambient.currentTime = 0; ambient.play().catch(()=>{}); } }catch(e){}
+      // Set a default jumpscare image and scream if not provided (developer/user can replace src)
+      if(!jumpscareImg.src) {
+        // data URL small placeholder (a dark red flash) - user should replace with real scary image for best effect
+        jumpscareImg.src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="100%" height="100%" fill="#0b0000"/><text x="50%" y="50%" font-size="80" fill="#ff0000" text-anchor="middle" dominant-baseline="middle">!!</text></svg>');
+      }
+      // show start screen exit
+      startScreen.style.display = 'none';
+      initState();
+      // small delay then launch ball so player can orient
+      setTimeout(()=>{ launchBall(); }, 250);
+    });
+
+    // --- Init ---
+    resizeCanvas();
+    // show start screen until user clicks start
+    requestAnimationFrame(loop);
+
+    // Expose functions for easy customization
+    window.game = game;
+    window.triggerJumpscare = triggerJumpscare;
+
+    // Developer note: to add real audio, set ambient.src = 'path/to/ambient.mp3' etc. Autoplay restrictions require a user gesture (Start button) to begin playback.
+  </script></body>
+</html>
